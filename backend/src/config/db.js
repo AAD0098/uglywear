@@ -6,7 +6,9 @@ const connectDB = async () => {
   try {
     await prisma.$connect();
   } catch (error) {
-    throw new Error("Database connection failed", { cause: error });
+    throw new Error(`Database connection failed: ${error.message}`, {
+      cause: error,
+    });
   }
 };
 
