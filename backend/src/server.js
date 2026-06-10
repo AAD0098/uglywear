@@ -20,7 +20,8 @@ app.use("/api/health", healthRoutes);
 
 app.use(errorHandler);
 
-const PORT = Number(process.env.PORT) || 5000;
+const parsedPort = Number(process.env.PORT);
+const PORT = Number.isFinite(parsedPort) ? parsedPort : 5000;
 
 const startServer = async () => {
   try {
