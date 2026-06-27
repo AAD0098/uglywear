@@ -1,10 +1,6 @@
 const errorHandler = (err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   const isProduction = process.env.NODE_ENV === "production";
-  const message =
-    isProduction && statusCode >= 500
-      ? "Internal Server Error"
-      : err.message || "Internal Server Error";
 
   if (statusCode >= 500) {
     console.error(err);
@@ -14,9 +10,18 @@ const errorHandler = (err, req, res, next) => {
     return next(err);
   }
 
-  res.status(statusCode).json({
-    message,
-  });
+  const response = {
+    message:
+      isProduction && statusCode >= 500
+        ? "Internal Server Error"
+        : err.message || "Internal Server Error",
+  };
+
+  if (!isProduction && statusCode >= 500) {
+    response.stack = err.stack;
+  }
+
+  res.status(statusCode).json(response);
 };
 
 module.exports = errorHandler;
