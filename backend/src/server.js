@@ -8,6 +8,7 @@ const rateLimit = require("express-rate-limit");
 
 const { connectDB, disconnectDB } = require("./config/db");
 const healthRoutes = require("./routes/health.routes");
+const notFound = require("./middleware/notFound");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -43,13 +44,7 @@ app.use(limiter);
 
 app.use("/api/health", healthRoutes);
 
-app.use((req, res, next) => {
-  res.status(404).json({
-    success: false,
-    message: `Cannot ${req.method} ${req.originalUrl}`,
-  });
-});
-
+app.use(notFound);
 app.use(errorHandler);
 
 const parsedPort = Number(process.env.PORT);
