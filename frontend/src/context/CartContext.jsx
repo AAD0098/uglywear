@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 
 const CartContext = createContext(null);
 
-const CART_KEY = "uglywear_cart";
+const CART_KEY = "uglystore_cart";
 
 const loadCart = () => {
   try {
