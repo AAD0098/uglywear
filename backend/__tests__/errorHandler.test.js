@@ -1,4 +1,5 @@
 const errorHandler = require("../src/middleware/errorHandler");
+const AppError = require("../src/utils/AppError");
 
 describe("errorHandler middleware", () => {
   let req;
@@ -32,20 +33,18 @@ describe("errorHandler middleware", () => {
   });
 
   it("should use the error's statusCode when provided", () => {
-    const err = new Error("Not Found");
-    err.statusCode = 404;
+    const err = AppError.notFound("Resource not found");
 
     errorHandler(err, req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: false, message: "Not Found" })
+      expect.objectContaining({ success: false, message: "Resource not found" })
     );
   });
 
   it("should log errors with status >= 500", () => {
-    const err = new Error("Server Error");
-    err.statusCode = 500;
+    const err = AppError.internal("Server Error");
 
     errorHandler(err, req, res, next);
 
@@ -56,44 +55,39 @@ describe("errorHandler middleware", () => {
   });
 
   it("should not log errors with status < 500", () => {
-    const err = new Error("Bad Request");
-    err.statusCode = 400;
+    const err = AppError.badRequest("Bad Request");
 
     errorHandler(err, req, res, next);
 
     expect(console.error).not.toHaveBeenCalled();
   });
 
-  it("should return generic message in production for 5xx errors", () => {
+  it("should return generic message in production for non-operational errors", () => {
     const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
 
     const err = new Error("Detailed internal error");
-    err.statusCode = 500;
 
     errorHandler(err, req, res, next);
 
-    expect(res.json).toHaveBeenCalledWith({
-      success: false,
-      message: "Internal Server Error",
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, message: "Internal Server Error" })
+    );
 
     process.env.NODE_ENV = originalEnv;
   });
 
-  it("should return actual message in production for 4xx errors", () => {
+  it("should return actual message in production for operational AppErrors", () => {
     const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
 
-    const err = new Error("Resource not found");
-    err.statusCode = 404;
+    const err = AppError.notFound("Resource not found");
 
     errorHandler(err, req, res, next);
 
-    expect(res.json).toHaveBeenCalledWith({
-      success: false,
-      message: "Resource not found",
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, message: "Resource not found" })
+    );
 
     process.env.NODE_ENV = originalEnv;
   });
@@ -111,6 +105,21 @@ describe("errorHandler middleware", () => {
     expect(jsonCall.success).toBe(false);
     expect(jsonCall.message).toBe("Detailed internal error");
     expect(jsonCall.stack).toBeDefined();
+
+    process.env.NODE_ENV = originalEnv;
+  });
+
+  it("should not include stack trace in production", () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+
+    const err = new Error("Internal error");
+    err.statusCode = 500;
+
+    errorHandler(err, req, res, next);
+
+    const jsonCall = res.json.mock.calls[0][0];
+    expect(jsonCall.stack).toBeUndefined();
 
     process.env.NODE_ENV = originalEnv;
   });
