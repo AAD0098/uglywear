@@ -19,7 +19,7 @@ export default function Home() {
     <div>
       <section className="bg-gradient-to-br from-gray-900 to-gray-800 text-white">
         <div className="max-w-7xl mx-auto px-4 py-24 sm:py-32 text-center">
-          <h1 className="text-5xl sm:text-7xl font-bold tracking-tight">UGLYWEAR</h1>
+          <h1 className="text-5xl sm:text-7xl font-bold tracking-tight">UGLYSTORE</h1>
           <p className="mt-4 text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto">
             Fashion that speaks louder than words. Bold, unapologetic, uniquely you.
           </p>

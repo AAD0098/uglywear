@@ -69,7 +69,7 @@ let server;
 const startServer = async () => {
   await connectDB();
   server = app.listen(PORT, () => {
-    console.log(`UGLYWEAR backend running on port ${PORT}`);
+    console.log(`UGLYSTORE backend running on port ${PORT}`);
   });
 
   server.on("error", (error) => {
