@@ -30,7 +30,7 @@ export default function Admin() {
     setLoading(true);
     try {
       if (tab === "products") {
-        const res = await api.get("/products?limit=100");
+        const res = await api.get("/products?limit=100&includeInactive=true");
         setProducts(res.data);
       } else {
         const res = await api.get("/orders?limit=100");

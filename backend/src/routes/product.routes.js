@@ -22,7 +22,11 @@ router.get(
   "/",
   asyncHandler(async (req, res) => {
     const { skip, take, page, limit } = paginate(req.query);
-    const where = { isActive: true };
+    const where = {};
+
+    if (req.query.includeInactive !== "true") {
+      where.isActive = true;
+    }
 
     if (req.query.search) {
       where.OR = [
@@ -48,8 +52,8 @@ router.get(
 router.get(
   "/:slug",
   asyncHandler(async (req, res) => {
-    const product = await prisma.product.findUnique({
-      where: { slug: req.params.slug },
+    const product = await prisma.product.findFirst({
+      where: { slug: req.params.slug, isActive: true },
     });
     if (!product) {
       throw AppError.notFound("Product not found");

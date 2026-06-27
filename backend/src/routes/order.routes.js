@@ -25,46 +25,55 @@ router.post(
       throw AppError.badRequest(`paymentMethod must be one of: ${validMethods.join(", ")}`);
     }
 
-    const productIds = items.map((i) => i.productId);
-    const products = await prisma.product.findMany({
-      where: { id: { in: productIds }, isActive: true },
-    });
-
-    if (products.length !== productIds.length) {
-      throw AppError.badRequest("One or more products not found or inactive");
+    for (const item of items) {
+      const qty = Number(item.quantity);
+      if (!Number.isInteger(qty) || qty < 1) {
+        throw AppError.badRequest("Quantity must be a positive integer");
+      }
+      item.quantity = qty;
     }
 
-    const productMap = new Map(products.map((p) => [p.id, p]));
-
-    let subtotal = 0;
-    const orderItems = items.map((item) => {
-      const product = productMap.get(item.productId);
-      if (item.quantity < 1) {
-        throw AppError.badRequest("Quantity must be at least 1");
-      }
-      if (product.stock < item.quantity) {
-        throw AppError.badRequest(`Insufficient stock for "${product.name}"`);
-      }
-      const unitPrice = Number(product.price);
-      const totalPrice = unitPrice * item.quantity;
-      subtotal += totalPrice;
-      return {
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice,
-        totalPrice,
-      };
-    });
-
-    const shippingCost = subtotal >= 1000 ? 0 : 60;
-    const totalAmount = subtotal + shippingCost;
+    const productIds = items.map((i) => i.productId);
 
     const order = await prisma.$transaction(async (tx) => {
+      const products = await tx.product.findMany({
+        where: { id: { in: productIds }, isActive: true },
+      });
+
+      if (products.length !== productIds.length) {
+        throw AppError.badRequest("One or more products not found or inactive");
+      }
+
+      const productMap = new Map(products.map((p) => [p.id, p]));
+
+      let subtotal = 0;
+      const orderItems = items.map((item) => {
+        const product = productMap.get(item.productId);
+        if (product.stock < item.quantity) {
+          throw AppError.badRequest(`Insufficient stock for "${product.name}"`);
+        }
+        const unitPrice = Number(product.price);
+        const totalPrice = unitPrice * item.quantity;
+        subtotal += totalPrice;
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice,
+          totalPrice,
+        };
+      });
+
+      const shippingCost = subtotal >= 1000 ? 0 : 60;
+      const totalAmount = subtotal + shippingCost;
+
       for (const item of items) {
-        await tx.product.update({
+        const updated = await tx.product.update({
           where: { id: item.productId },
           data: { stock: { decrement: item.quantity } },
         });
+        if (updated.stock < 0) {
+          throw AppError.badRequest(`Insufficient stock for "${productMap.get(item.productId).name}"`);
+        }
       }
 
       return tx.order.create({
