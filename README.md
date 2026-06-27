@@ -1,2 +1,2 @@
-# uglywear
-GLYWEAR e-commerce platform
+# UglyStore
+UglyStore e-commerce platform
