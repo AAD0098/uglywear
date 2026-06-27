@@ -45,8 +45,16 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many authentication attempts, please try again later." },
+});
+
 app.use("/api/health", healthRoutes);
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 

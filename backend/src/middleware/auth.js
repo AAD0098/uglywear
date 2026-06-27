@@ -3,6 +3,9 @@ const { prisma } = require("../config/db");
 const { AppError, asyncHandler } = require("../utils");
 
 const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is required");
+}
 
 const authenticate = asyncHandler(async (req, res, next) => {
   const header = req.headers.authorization;
