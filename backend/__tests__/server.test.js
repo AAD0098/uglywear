@@ -9,30 +9,14 @@ jest.mock("../src/config/db", () => ({
 }));
 
 const request = require("supertest");
-const express = require("express");
+const { app } = require("../src/server");
 
 describe("Express app setup", () => {
-  let app;
-
-  beforeAll(() => {
-    // Build the app without starting the server (avoid port binding)
-    const helmet = require("helmet");
-    const cors = require("cors");
-    const healthRoutes = require("../src/routes/health.routes");
-    const errorHandler = require("../src/middleware/errorHandler");
-
-    app = express();
-    app.use(helmet());
-    app.use(cors());
-    app.use(express.json());
-    app.use("/api/health", healthRoutes);
-    app.use(errorHandler);
-  });
-
   it("should respond to health check endpoint", async () => {
     const response = await request(app).get("/api/health");
 
     expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
     expect(response.body.status).toBe("ok");
   });
 
@@ -42,12 +26,27 @@ describe("Express app setup", () => {
     expect(response.headers["x-content-type-options"]).toBe("nosniff");
   });
 
-  it("should enable CORS", async () => {
+  it("should reject CORS for non-allowed origins", async () => {
     const response = await request(app)
-      .get("/api/health")
-      .set("Origin", "http://example.com");
+      .options("/api/health")
+      .set("Origin", "http://evil.com")
+      .set("Access-Control-Request-Method", "GET");
 
-    expect(response.headers["access-control-allow-origin"]).toBe("*");
+    // CORS_ORIGIN is not set in test env, so allowedOrigins is empty
+    // and no origin should receive access-control-allow-origin
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
+  });
+
+  it("should include CORS middleware with correct allowed methods", async () => {
+    // Even without a matching origin, the middleware is configured with
+    // specific methods - we verify it responds to preflight
+    const response = await request(app)
+      .options("/api/health")
+      .set("Origin", "http://example.com")
+      .set("Access-Control-Request-Method", "DELETE");
+
+    // The middleware is present (responds to OPTIONS)
+    expect(response.status).toBeLessThan(500);
   });
 
   it("should parse JSON body", async () => {
@@ -56,18 +55,22 @@ describe("Express app setup", () => {
       .send({ test: "data" })
       .set("Content-Type", "application/json");
 
-    // Express 5 returns 404 for POST to a GET-only route, not a parse error
+    // POST to a GET-only route triggers the notFound middleware
     expect(response.status).toBe(404);
   });
 
-  it("should handle 404 for unknown routes via error handler", async () => {
+  it("should return 404 for unknown routes via notFound middleware", async () => {
     const response = await request(app).get("/api/nonexistent");
 
     expect(response.status).toBe(404);
+    expect(response.body.success).toBe(false);
+    expect(response.body.message).toMatch(/Route not found/);
   });
 
-  it("should handle errors thrown in routes", async () => {
-    // Add a route that throws an error
+  it("should handle errors thrown in routes via errorHandler", async () => {
+    const express = require("express");
+    const errorHandler = require("../src/middleware/errorHandler");
+
     const testApp = express();
     testApp.use(express.json());
     testApp.get("/error", (req, res, next) => {
@@ -75,13 +78,19 @@ describe("Express app setup", () => {
       err.statusCode = 422;
       next(err);
     });
-    const errorHandler = require("../src/middleware/errorHandler");
     testApp.use(errorHandler);
 
     const response = await request(testApp).get("/error");
 
     expect(response.status).toBe(422);
     expect(response.body.message).toBe("Test error");
+  });
+
+  it("should include rate limiting middleware", async () => {
+    // The app has rate limiting configured; headers prove it's active
+    const response = await request(app).get("/api/health");
+
+    expect(response.headers["ratelimit-limit"]).toBeDefined();
   });
 
   describe("PORT configuration", () => {

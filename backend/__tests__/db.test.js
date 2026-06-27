@@ -9,11 +9,17 @@ jest.mock("@prisma/client", () => {
 });
 
 const { PrismaClient } = require("@prisma/client");
-const { prisma, connectDB } = require("../src/config/db");
+const { prisma, connectDB, disconnectDB } = require("../src/config/db");
 
 describe("db config", () => {
+  beforeEach(() => {
+    jest.spyOn(console, "log").mockImplementation(() => {});
+    jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe("prisma client", () => {
@@ -32,7 +38,15 @@ describe("db config", () => {
       expect(prisma.$connect).toHaveBeenCalledTimes(1);
     });
 
-    it("should throw an error when connection fails", async () => {
+    it("should log success message on connection", async () => {
+      prisma.$connect.mockResolvedValueOnce(undefined);
+
+      await connectDB();
+
+      expect(console.log).toHaveBeenCalledWith("Database connected");
+    });
+
+    it("should throw an AppError when connection fails", async () => {
       const dbError = new Error("Connection refused");
       prisma.$connect.mockRejectedValueOnce(dbError);
 
@@ -44,7 +58,30 @@ describe("db config", () => {
       prisma.$connect.mockRejectedValueOnce(dbError);
 
       await expect(connectDB()).rejects.toThrow(
-        "Database connection failed: ECONNREFUSED"
+        "Database connection failed: ECONNREFUSED",
+      );
+    });
+  });
+
+  describe("disconnectDB", () => {
+    it("should call prisma.$disconnect successfully", async () => {
+      prisma.$disconnect.mockResolvedValueOnce(undefined);
+
+      await disconnectDB();
+
+      expect(prisma.$disconnect).toHaveBeenCalledTimes(1);
+      expect(console.log).toHaveBeenCalledWith("Database disconnected");
+    });
+
+    it("should handle disconnect errors gracefully", async () => {
+      const dbError = new Error("Disconnect failed");
+      prisma.$disconnect.mockRejectedValueOnce(dbError);
+
+      await disconnectDB();
+
+      expect(console.error).toHaveBeenCalledWith(
+        "Error disconnecting from database:",
+        dbError,
       );
     });
   });
