@@ -17,7 +17,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   const message =
-    isProduction && !isOperational
+    isProduction && !isOperational && statusCode >= 500
       ? "Internal Server Error"
       : err.message || "Internal Server Error";
 

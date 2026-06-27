@@ -1,6 +1,6 @@
 const express = require("express");
 const { prisma } = require("../config/db");
-const { asyncHandler, ApiResponse } = require("../utils");
+const { asyncHandler } = require("../utils");
 
 const router = express.Router();
 
@@ -9,7 +9,8 @@ router.get(
   asyncHandler(async (req, res) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
-      ApiResponse.success(res, {
+      res.status(200).json({
+        success: true,
         status: "ok",
         time: new Date().toISOString(),
       });

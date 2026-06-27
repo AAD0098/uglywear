@@ -1,5 +1,12 @@
 const express = require("express");
 const request = require("supertest");
+
+jest.mock("../src/config/db", () => ({
+  prisma: {
+    $queryRaw: jest.fn().mockResolvedValue([{ "?column?": 1 }]),
+  },
+}));
+
 const healthRoutes = require("../src/routes/health.routes");
 
 describe("GET /api/health", () => {
@@ -44,5 +51,16 @@ describe("GET /api/health", () => {
     const responseTime = new Date(response.body.time);
     expect(responseTime.getTime()).toBeGreaterThanOrEqual(before.getTime());
     expect(responseTime.getTime()).toBeLessThanOrEqual(after.getTime());
+  });
+
+  it("should return 503 when database is unreachable", async () => {
+    const { prisma } = require("../src/config/db");
+    prisma.$queryRaw.mockRejectedValueOnce(new Error("Connection refused"));
+
+    const response = await request(app).get("/api/health");
+
+    expect(response.status).toBe(503);
+    expect(response.body.status).toBe("degraded");
+    expect(response.body.message).toBe("Database unreachable");
   });
 });
