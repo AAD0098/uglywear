@@ -6,7 +6,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 
-const { connectDB } = require("./config/db");
+const { connectDB, disconnectDB } = require("./config/db");
 const healthRoutes = require("./routes/health.routes");
 const errorHandler = require("./middleware/errorHandler");
 
@@ -43,21 +43,61 @@ app.use(limiter);
 
 app.use("/api/health", healthRoutes);
 
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: `Cannot ${req.method} ${req.originalUrl}`,
+  });
+});
+
 app.use(errorHandler);
 
 const parsedPort = Number(process.env.PORT);
 const PORT = Number.isFinite(parsedPort) ? parsedPort : 5000;
 
+let server;
+
 const startServer = async () => {
-  try {
-    await connectDB();
-    app.listen(PORT, () => {
-      console.log(`UGLYWEAR backend running on port ${PORT}`);
-    });
-  } catch (error) {
-    console.error("Database connection failed", error);
+  await connectDB();
+  server = app.listen(PORT, () => {
+    console.log(`UGLYWEAR backend running on port ${PORT}`);
+  });
+
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+      console.error(`Port ${PORT} is already in use`);
+    } else {
+      console.error("Server error:", error);
+    }
     process.exit(1);
-  }
+  });
 };
 
-startServer();
+const shutdown = async (signal) => {
+  console.log(`\n${signal} received — shutting down`);
+  if (server) {
+    server.close(() => {
+      console.log("HTTP server closed");
+    });
+  }
+  await disconnectDB();
+  process.exit(0);
+};
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+  process.exit(1);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+  process.exit(1);
+});
+
+startServer().catch((error) => {
+  console.error("Failed to start server:", error);
+  process.exit(1);
+});
