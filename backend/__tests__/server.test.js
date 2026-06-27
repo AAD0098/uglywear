@@ -1,6 +1,11 @@
 jest.mock("../src/config/db", () => ({
-  prisma: { $connect: jest.fn(), $disconnect: jest.fn() },
+  prisma: {
+    $connect: jest.fn(),
+    $disconnect: jest.fn(),
+    $queryRaw: jest.fn().mockResolvedValue([{ "?column?": 1 }]),
+  },
   connectDB: jest.fn(),
+  disconnectDB: jest.fn(),
 }));
 
 const request = require("supertest");
