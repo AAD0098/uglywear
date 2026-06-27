@@ -1,3 +1,5 @@
+process.env.JWT_SECRET = "test-secret-for-jest";
+
 jest.mock("../src/config/db", () => ({
   prisma: {
     $connect: jest.fn(),
