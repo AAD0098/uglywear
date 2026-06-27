@@ -11,6 +11,7 @@ const healthRoutes = require("./routes/health.routes");
 const authRoutes = require("./routes/auth.routes");
 const productRoutes = require("./routes/product.routes");
 const orderRoutes = require("./routes/order.routes");
+const adminRoutes = require("./routes/admin.routes");
 const notFound = require("./middleware/notFound");
 const errorHandler = require("./middleware/errorHandler");
 
@@ -57,6 +58,7 @@ app.use("/api/health", healthRoutes);
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
