@@ -1,6 +1,6 @@
 const express = require("express");
 const { prisma } = require("../config/db");
-const { asyncHandler, ApiResponse } = require("../utils");
+const { asyncHandler } = require("../utils");
 
 const router = express.Router();
 
